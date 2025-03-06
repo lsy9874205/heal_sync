@@ -50,8 +50,8 @@ except requests.exceptions.RequestException as e:
 client = QdrantClient(url=base_url, api_key=QDRANT_API_KEY)
 
 # Define collection details
-COLLECTION_NAME = "combined_embeddings"
-VECTOR_DIMENSION = 1536
+COLLECTION_NAME = "heal_embeddings"  # New collection for fine-tuned model
+VECTOR_DIMENSION = 384   # Your model's dimensions
 
 # Get the current count of vectors to use as starting ID for new uploads
 try:
@@ -64,8 +64,11 @@ except Exception:
 try:
     collection_info = client.get_collection(COLLECTION_NAME)
     if not hasattr(collection_info.config.params.vectors, "size") or collection_info.config.params.vectors.size != VECTOR_DIMENSION:
-        st.error(f"Collection `{COLLECTION_NAME}` has incorrect vector size! Delete & recreate it.")
-        st.stop()
+        st.warning(f"Recreating collection with correct vector size...")
+        client.recreate_collection(
+            collection_name=COLLECTION_NAME,
+            vectors_config=models.VectorParams(size=VECTOR_DIMENSION, distance=models.Distance.COSINE),
+        )
 except Exception:
     st.warning(f"Collection `{COLLECTION_NAME}` not found. Creating it now...")
     client.recreate_collection(
@@ -125,11 +128,10 @@ if uploaded_file:
             os.environ['HF_HOME'] = '/tmp/huggingface'
 
             # Initialize embeddings with explicit cache location
-            heal_embeddings = HuggingFaceEmbeddings(
+            embeddings = HuggingFaceEmbeddings(
                 model_name="lsy9874205/heal-protocol-embeddings",
                 cache_folder="/tmp/embeddings_cache"
             )
-            openai_embeddings = OpenAIEmbeddings()
 
             # Embed and store in Qdrant with better error handling
             try:
@@ -137,7 +139,7 @@ if uploaded_file:
                 points = []
                 for i, chunk in enumerate(chunks):
                     try:
-                        vector = heal_embeddings.embed_query(chunk)
+                        vector = embeddings.embed_query(chunk)
                         points.append(
                             models.PointStruct(
                                 id=next_id + i,  # Use incrementing IDs starting after pre-built embeddings
@@ -188,9 +190,7 @@ if query:
             vectorstore = Qdrant(
                 client=client,
                 collection_name=COLLECTION_NAME,
-                embeddings=HuggingFaceEmbeddings(
-                    model_name="lsy9874205/heal-protocol-embeddings"
-                ),
+                embeddings=embeddings,
             )
             results = vectorstore.similarity_search(
                 query, 
