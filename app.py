@@ -50,9 +50,9 @@ except requests.exceptions.RequestException as e:
 client = QdrantClient(url=base_url, api_key=QDRANT_API_KEY)
 
 # Define collection details
-OLD_COLLECTION = "combined_embeddings"     # Keep original collection name
-COLLECTION_NAME = "combined_embeddings"    # Use same collection for consistency
-VECTOR_DIMENSION = 1536   # Change back to OpenAI dimensions
+OLD_COLLECTION = "combined_embeddings"     # OpenAI embeddings (1536 dimensions)
+COLLECTION_NAME = "fine_tuned_embeddings"  # Fine-tuned model (384 dimensions)
+VECTOR_DIMENSION = 384    # For fine-tuned embeddings
 
 # Get the current count of vectors to use as starting ID for new uploads
 try:
@@ -134,7 +134,7 @@ if uploaded_file:
                 points = []
                 for i, chunk in enumerate(chunks):
                     try:
-                        vector = embeddings.embed_query(chunk)
+                        vector = embeddings.embed_query(chunk)  # Now using OpenAI embeddings
                         points.append(
                             models.PointStruct(
                                 id=next_id + i,
@@ -179,83 +179,78 @@ llm = ChatOpenAI(model="gpt-4-turbo", openai_api_key=openai_api_key)
 # Question input
 query = st.text_input("Ask a question about your document:")
 
+# When searching, try both collections
+def search_all_collections(query, embeddings):
+    results = []
+    try:
+        st.write("Searching original embeddings collection...")
+        # Search old collection with OpenAI embeddings
+        old_store = Qdrant(
+            client=client,
+            collection_name=OLD_COLLECTION,
+            embeddings=OpenAIEmbeddings()
+        )
+        old_results = old_store.similarity_search(query, k=6)
+        st.write(f"Found {len(old_results)} results in original embeddings")
+        results.extend(old_results)
+        
+        st.write("Searching fine-tuned embeddings collection...")
+        # Search new collection with fine-tuned embeddings
+        new_store = Qdrant(
+            client=client,
+            collection_name=COLLECTION_NAME,
+            embeddings=embeddings
+        )
+        new_results = new_store.similarity_search(query, k=6)
+        st.write(f"Found {len(new_results)} results in fine-tuned embeddings")
+        results.extend(new_results)
+    except Exception as e:
+        st.error(f"Search error: {str(e)}")
+    return results
+
 if query:
     with st.spinner("Searching for answers..."):
-        try:
-            # When searching, try both collections
-            def search_all_collections(query, embeddings):
-                results = []
-                try:
-                    st.write("Searching original embeddings collection...")
-                    # Search old collection with OpenAI embeddings
-                    old_store = Qdrant(
-                        client=client,
-                        collection_name=OLD_COLLECTION,
-                        embeddings=OpenAIEmbeddings()
-                    )
-                    old_results = old_store.similarity_search(query, k=6)
-                    st.write(f"Found {len(old_results)} results in original embeddings")
-                    results.extend(old_results)
-                    
-                    st.write("Searching fine-tuned embeddings collection...")
-                    # Search new collection with fine-tuned embeddings
-                    new_store = Qdrant(
-                        client=client,
-                        collection_name=COLLECTION_NAME,
-                        embeddings=embeddings
-                    )
-                    new_results = new_store.similarity_search(query, k=6)
-                    st.write(f"Found {len(new_results)} results in fine-tuned embeddings")
-                    results.extend(new_results)
-                except Exception as e:
-                    st.error(f"Search error: {str(e)}")
-                return results
+        results = search_all_collections(query, embeddings)
 
-            # Search in all collections
-            results = search_all_collections(query, embeddings)
+        # Ensure valid retrieved results
+        cleaned_results = [res.page_content for res in results if hasattr(res, "page_content") and res.page_content]
 
-            # Ensure valid retrieved results
-            cleaned_results = [res.page_content for res in results if hasattr(res, "page_content") and res.page_content]
+        if not cleaned_results:
+            # Fallback to general LLM response
+            fallback_prompt = f"""You are an AI assistant for the HEAL Research Dissemination Center.
+            The user has asked a question about a clinical research protocol, but I couldn't find relevant sections in the document.
+            
+            Please provide a general response about how this topic typically appears in clinical protocols.
+            If the question is completely unrelated to clinical protocols, politely redirect the user.
+            
+            Question: {query}
+            """
+            response = llm([HumanMessage(content=fallback_prompt)])
+            st.write("### SYNC Response (General Knowledge):")
+            st.write("I couldn't find specific information about this in your protocol, but here's a general response:")
+            st.write(response.content)
+        else:
+            # Format retrieved text
+            context = "\n".join(cleaned_results)
 
-            if not cleaned_results:
-                # Fallback to general LLM response
-                fallback_prompt = f"""You are an AI assistant for the HEAL Research Dissemination Center.
-                The user has asked a question about a clinical research protocol, but I couldn't find relevant sections in the document.
-                
-                Please provide a general response about how this topic typically appears in clinical protocols.
-                If the question is completely unrelated to clinical protocols, politely redirect the user.
-                
-                Question: {query}
-                """
-                response = llm([HumanMessage(content=fallback_prompt)])
-                st.write("### SYNC Response (General Knowledge):")
-                st.write("I couldn't find specific information about this in your protocol, but here's a general response:")
-                st.write(response.content)
-            else:
-                # Format retrieved text
-                context = "\n".join(cleaned_results)
+            # Send context + query to LLM
+            prompt = f"""You are an AI assistant analyzing clinical research protocols for the HEAL Research Dissemination Center.
+            You have access to sections of a research protocol document.
+            
+            When answering questions:
+            1. Focus on the specific details found in the protocol
+            2. Reference relevant sections (like Methods, Eligibility, etc.)
+            3. Be precise about what the protocol states
+            4. If information isn't in the provided sections, say "That information isn't in the sections I can access"
+            
+            Current protocol sections:
+            {context}
+            
+            Question: {query}
+            
+            Answer based ONLY on the protocol sections above:"""
+            response = llm([HumanMessage(content=prompt)])
 
-                # Send context + query to LLM
-                prompt = f"""You are an AI assistant analyzing clinical research protocols for the HEAL Research Dissemination Center.
-                You have access to sections of a research protocol document.
-                
-                When answering questions:
-                1. Focus on the specific details found in the protocol
-                2. Reference relevant sections (like Methods, Eligibility, etc.)
-                3. Be precise about what the protocol states
-                4. If information isn't in the provided sections, say "That information isn't in the sections I can access"
-                
-                Current protocol sections:
-                {context}
-                
-                Question: {query}
-                
-                Answer based ONLY on the protocol sections above:"""
-                response = llm([HumanMessage(content=prompt)])
-
-                # Display response
-                st.write("### SYNC Response:")
-                st.write(response.content)
-
-        except Exception as e:
-            st.error(f"Error retrieving answers: {e}")
+            # Display response
+            st.write("### SYNC Response:")
+            st.write(response.content)
