@@ -4,7 +4,7 @@ from pypdf import PdfReader  # More reliable PDF extraction
 import tempfile
 from dotenv import load_dotenv
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings, OpenAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_openai import ChatOpenAI
 from langchain_community.vectorstores import Qdrant
 from langchain.schema import HumanMessage
@@ -216,47 +216,59 @@ def search_all_collections(query, embeddings):
 
 if query:
     with st.spinner("Searching for answers..."):
-        results = search_all_collections(query, embeddings)
+        if uploaded_file:  # If a document is uploaded, use RAG
+            results = search_all_collections(query, embeddings)
 
-        # Ensure valid retrieved results
-        cleaned_results = [res.page_content for res in results if hasattr(res, "page_content") and res.page_content]
+            # Ensure valid retrieved results
+            cleaned_results = [res.page_content for res in results if hasattr(res, "page_content") and res.page_content]
 
-        if not cleaned_results:
-            # Fallback to general LLM response
-            fallback_prompt = f"""You are an AI assistant for the HEAL Research Dissemination Center.
-            The user has asked a question about a clinical research protocol, but I couldn't find relevant sections in the document.
-            
-            Please provide a general response about how this topic typically appears in clinical protocols.
-            If the question is completely unrelated to clinical protocols, politely redirect the user.
+            if not cleaned_results:
+                # Fallback to general LLM response
+                fallback_prompt = f"""You are an AI assistant for the HEAL Research Dissemination Center.
+                The user has asked a question about a clinical research protocol, but I couldn't find relevant sections in the document.
+                
+                Please provide a general response about how this topic typically appears in clinical protocols.
+                If the question is completely unrelated to clinical protocols, politely redirect the user.
+                
+                Question: {query}
+                """
+                response = llm([HumanMessage(content=fallback_prompt)])
+                st.write("### SYNC Response (General Knowledge):")
+                st.write("I couldn't find specific information about this in your protocol, but here's a general response:")
+                st.write(response.content)
+            else:
+                # Format retrieved text
+                context = "\n".join(cleaned_results)
+
+                # Send context + query to LLM
+                prompt = f"""You are an AI assistant analyzing clinical research protocols for the HEAL Research Dissemination Center.
+                You have access to sections of a research protocol document.
+                
+                When answering questions:
+                1. Focus on the specific details found in the protocol
+                2. Reference relevant sections (like Methods, Eligibility, etc.)
+                3. Be precise about what the protocol states
+                4. If information isn't in the provided sections, say "That information isn't in the sections I can access"
+                
+                Current protocol sections:
+                {context}
+                
+                Question: {query}
+                
+                Answer based ONLY on the protocol sections above:"""
+                response = llm([HumanMessage(content=prompt)])
+
+                # Display response
+                st.write("### SYNC Response:")
+                st.write(response.content)
+        else:  # No document uploaded, use general chat
+            general_prompt = f"""You are an AI assistant for the HEAL Research Dissemination Center.
+            You help users understand clinical research protocols and common data elements.
             
             Question: {query}
-            """
-            response = llm([HumanMessage(content=fallback_prompt)])
-            st.write("### SYNC Response (General Knowledge):")
-            st.write("I couldn't find specific information about this in your protocol, but here's a general response:")
-            st.write(response.content)
-        else:
-            # Format retrieved text
-            context = "\n".join(cleaned_results)
-
-            # Send context + query to LLM
-            prompt = f"""You are an AI assistant analyzing clinical research protocols for the HEAL Research Dissemination Center.
-            You have access to sections of a research protocol document.
             
-            When answering questions:
-            1. Focus on the specific details found in the protocol
-            2. Reference relevant sections (like Methods, Eligibility, etc.)
-            3. Be precise about what the protocol states
-            4. If information isn't in the provided sections, say "That information isn't in the sections I can access"
+            Provide a helpful response about clinical protocols or HEAL Initiative topics:"""
             
-            Current protocol sections:
-            {context}
-            
-            Question: {query}
-            
-            Answer based ONLY on the protocol sections above:"""
-            response = llm([HumanMessage(content=prompt)])
-
-            # Display response
+            response = llm([HumanMessage(content=general_prompt)])
             st.write("### SYNC Response:")
             st.write(response.content)
