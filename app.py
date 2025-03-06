@@ -4,7 +4,7 @@ from pypdf import PdfReader  # More reliable PDF extraction
 import tempfile
 from dotenv import load_dotenv
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings, OpenAIEmbeddings
 from langchain_openai import ChatOpenAI
 from langchain_community.vectorstores import Qdrant
 from langchain.schema import HumanMessage
