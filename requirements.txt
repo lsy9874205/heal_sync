@@ -8,3 +8,5 @@ qdrant-client
 requests
 tiktoken
 pypdf
+sentence-transformers>=2.0.0
+torch>=2.0.0
