@@ -50,7 +50,8 @@ except requests.exceptions.RequestException as e:
 client = QdrantClient(url=base_url, api_key=QDRANT_API_KEY)
 
 # Define collection details
-COLLECTION_NAME = "heal_embeddings"  # New collection for fine-tuned model
+OLD_COLLECTION = "combined_embeddings"  # Keep old collection for existing data
+COLLECTION_NAME = "heal_embeddings"     # New collection for fine-tuned model
 VECTOR_DIMENSION = 384   # Your model's dimensions
 
 # Get the current count of vectors to use as starting ID for new uploads
@@ -122,6 +123,7 @@ if uploaded_file:
             # Chunk text
             splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=100)
             chunks = splitter.split_text(text)
+            st.write(f"Created {len(chunks)} chunks from the PDF")
 
             # Set cache directory to a writable location
             os.environ['TRANSFORMERS_CACHE'] = '/tmp/transformers_cache'
@@ -135,19 +137,18 @@ if uploaded_file:
 
             # Embed and store in Qdrant with better error handling
             try:
-                # Use default OpenAI embedding model (1536 dimensions)
                 points = []
                 for i, chunk in enumerate(chunks):
                     try:
                         vector = embeddings.embed_query(chunk)
                         points.append(
                             models.PointStruct(
-                                id=next_id + i,  # Use incrementing IDs starting after pre-built embeddings
+                                id=next_id + i,
                                 vector=vector,
                                 payload={
                                     "page_content": chunk,
                                     "source": uploaded_file.name,
-                                    "type": "user_upload"  # Mark as new upload to distinguish from pre-built
+                                    "type": "user_upload"
                                 }
                             )
                         )
@@ -155,8 +156,9 @@ if uploaded_file:
                         st.error(f"Error embedding chunk {i}: {str(embed_error)}")
                         continue
 
-                if points:  # Only try to upsert if we have valid points
+                if points:
                     client.upsert(collection_name=COLLECTION_NAME, points=points)
+                    st.write(f"Stored {len(points)} chunks in Qdrant")
                     st.success("PDF processed successfully")
                 else:
                     st.error("No valid embeddings were created")
@@ -186,17 +188,37 @@ query = st.text_input("Ask a question about your document:")
 if query:
     with st.spinner("Searching for answers..."):
         try:
-            # Search in single collection
-            vectorstore = Qdrant(
-                client=client,
-                collection_name=COLLECTION_NAME,
-                embeddings=embeddings,
-            )
-            results = vectorstore.similarity_search(
-                query, 
-                k=12,  # Increase retrieved chunks
-                score_threshold=0.7  # Add relevance threshold
-            )
+            # When searching, try both collections
+            def search_all_collections(query, embeddings):
+                results = []
+                try:
+                    st.write("Searching old collection...")
+                    # Search old collection with OpenAI embeddings
+                    old_store = Qdrant(
+                        client=client,
+                        collection_name=OLD_COLLECTION,
+                        embeddings=OpenAIEmbeddings()
+                    )
+                    old_results = old_store.similarity_search(query, k=6)
+                    st.write(f"Found {len(old_results)} results in old collection")
+                    results.extend(old_results)
+                    
+                    st.write("Searching new collection...")
+                    # Search new collection with fine-tuned embeddings
+                    new_store = Qdrant(
+                        client=client,
+                        collection_name=COLLECTION_NAME,
+                        embeddings=embeddings
+                    )
+                    new_results = new_store.similarity_search(query, k=6)
+                    st.write(f"Found {len(new_results)} results in new collection")
+                    results.extend(new_results)
+                except Exception as e:
+                    st.error(f"Search error: {str(e)}")
+                return results
+
+            # Search in all collections
+            results = search_all_collections(query, embeddings)
 
             # Ensure valid retrieved results
             cleaned_results = [res.page_content for res in results if hasattr(res, "page_content") and res.page_content]
