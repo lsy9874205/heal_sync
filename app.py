@@ -50,9 +50,9 @@ except requests.exceptions.RequestException as e:
 client = QdrantClient(url=base_url, api_key=QDRANT_API_KEY)
 
 # Define collection details
-OLD_COLLECTION = "original_embeddings"  # OpenAI embeddings collection
-COLLECTION_NAME = "fine_tuned_embeddings"  # Your fine-tuned model collection
-VECTOR_DIMENSION = 384   # Your model's dimensions
+OLD_COLLECTION = "combined_embeddings"     # Keep original collection name
+COLLECTION_NAME = "combined_embeddings"    # Use same collection for consistency
+VECTOR_DIMENSION = 1536   # Change back to OpenAI dimensions
 
 # Get the current count of vectors to use as starting ID for new uploads
 try:
@@ -64,12 +64,6 @@ except Exception:
 # Ensure Qdrant collection exists
 try:
     collection_info = client.get_collection(COLLECTION_NAME)
-    if not hasattr(collection_info.config.params.vectors, "size") or collection_info.config.params.vectors.size != VECTOR_DIMENSION:
-        st.warning(f"Recreating collection with correct vector size...")
-        client.recreate_collection(
-            collection_name=COLLECTION_NAME,
-            vectors_config=models.VectorParams(size=VECTOR_DIMENSION, distance=models.Distance.COSINE),
-        )
 except Exception:
     st.warning(f"Collection `{COLLECTION_NAME}` not found. Creating it now...")
     client.recreate_collection(
