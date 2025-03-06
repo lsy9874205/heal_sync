@@ -53,3 +53,16 @@ streamlit run app.py
 - Embeddings: Custom fine-tuned model
 - Vector Store: Qdrant
 - LLM: GPT-4
+
+## Directory Structure
+
+```
+heal_sync/
+├── app.py
+├── evaluate_rag.py
+├── finetune_embeddings.py
+├── requirements.txt
+├── heal_golden_qa_pairs.json    # Your original test cases
+└── heal-embeddings/
+    └── README.md
+```
