@@ -1,3 +1,14 @@
+---
+title: HEAL SYNC
+emoji: 🏥
+colorFrom: blue
+colorTo: purple
+sdk: streamlit
+sdk_version: 1.31.0
+app_file: app.py
+pinned: false
+---
+
 # HEAL SYNC
 
 A RAG system for clinical protocols using fine-tuned embeddings.
