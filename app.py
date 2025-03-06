@@ -120,9 +120,14 @@ if uploaded_file:
             splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=100)
             chunks = splitter.split_text(text)
 
-            # Initialize both embedding models for comparison
+            # Set cache directory to a writable location
+            os.environ['TRANSFORMERS_CACHE'] = '/tmp/transformers_cache'
+            os.environ['HF_HOME'] = '/tmp/huggingface'
+
+            # Initialize embeddings with explicit cache location
             heal_embeddings = HuggingFaceEmbeddings(
-                model_name="lsy9874205/heal-protocol-embeddings"
+                model_name="lsy9874205/heal-protocol-embeddings",
+                cache_folder="/tmp/embeddings_cache"
             )
             openai_embeddings = OpenAIEmbeddings()
 
