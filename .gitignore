@@ -127,4 +127,20 @@ rag_langchain.py
 
 # Temporary/Backup files
 .netrc
-app.bak
+app.bakevaluate_rag.py
+finetune_embeddings.py
+heal-embeddings/
+preprocess_protocols.py
+processing_files/
+test_model.py
+
+# Add specific files to ignore
+heal-embeddings/
+*.safetensors
+model.safetensors
+vocab.txt
+evaluate_rag.py
+finetune_embeddings.py
+preprocess_protocols.py
+processing_files/
+test_model.py
