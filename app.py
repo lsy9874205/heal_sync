@@ -176,6 +176,12 @@ if uploaded_file:
 # Initialize LLM
 llm = ChatOpenAI(model="gpt-4-turbo", openai_api_key=openai_api_key)
 
+# Initialize embeddings outside the file upload block
+embeddings = HuggingFaceEmbeddings(
+    model_name="lsy9874205/heal-protocol-embeddings",
+    cache_folder="/tmp/embeddings_cache"
+)
+
 # Question input
 query = st.text_input("Ask a question about your document:")
 
