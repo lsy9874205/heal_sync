@@ -50,8 +50,8 @@ except requests.exceptions.RequestException as e:
 client = QdrantClient(url=base_url, api_key=QDRANT_API_KEY)
 
 # Define collection details
-OLD_COLLECTION = "combined_embeddings"  # Keep old collection for existing data
-COLLECTION_NAME = "heal_embeddings"     # New collection for fine-tuned model
+OLD_COLLECTION = "original_embeddings"  # OpenAI embeddings collection
+COLLECTION_NAME = "fine_tuned_embeddings"  # Your fine-tuned model collection
 VECTOR_DIMENSION = 384   # Your model's dimensions
 
 # Get the current count of vectors to use as starting ID for new uploads
@@ -192,7 +192,7 @@ if query:
             def search_all_collections(query, embeddings):
                 results = []
                 try:
-                    st.write("Searching old collection...")
+                    st.write("Searching original embeddings collection...")
                     # Search old collection with OpenAI embeddings
                     old_store = Qdrant(
                         client=client,
@@ -200,10 +200,10 @@ if query:
                         embeddings=OpenAIEmbeddings()
                     )
                     old_results = old_store.similarity_search(query, k=6)
-                    st.write(f"Found {len(old_results)} results in old collection")
+                    st.write(f"Found {len(old_results)} results in original embeddings")
                     results.extend(old_results)
                     
-                    st.write("Searching new collection...")
+                    st.write("Searching fine-tuned embeddings collection...")
                     # Search new collection with fine-tuned embeddings
                     new_store = Qdrant(
                         client=client,
@@ -211,7 +211,7 @@ if query:
                         embeddings=embeddings
                     )
                     new_results = new_store.similarity_search(query, k=6)
-                    st.write(f"Found {len(new_results)} results in new collection")
+                    st.write(f"Found {len(new_results)} results in fine-tuned embeddings")
                     results.extend(new_results)
                 except Exception as e:
                     st.error(f"Search error: {str(e)}")
