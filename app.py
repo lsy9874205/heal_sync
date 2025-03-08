@@ -234,7 +234,7 @@ def search_all_collections(query, embeddings):
         st.write("Searching original embeddings collection...")
         # Search old collection with OpenAI embeddings
         old_store = Qdrant(
-            client=openai_client,
+            client=qdrant_client,
             collection_name=OLD_COLLECTION,
             embeddings=OpenAIEmbeddings()
         )
