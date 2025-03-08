@@ -198,15 +198,15 @@ AVAILABLE_MODELS = {
     }
 }
 
-# OpenAI client configuration
-client = OpenAI(
+# OpenAI client
+openai_client = OpenAI(
     api_key=openai_api_key
 )
 
-# Update Qdrant client configuration
+# Separate Qdrant client
 qdrant_client = QdrantClient(
     url=QDRANT_HOST,
-    api_key=QDRANT_API_KEY,
+    api_key=QDRANT_API_KEY
 )
 
 # Make sure collection settings match the embedding dimensions
@@ -234,7 +234,7 @@ def search_all_collections(query, embeddings):
         st.write("Searching original embeddings collection...")
         # Search old collection with OpenAI embeddings
         old_store = Qdrant(
-            client=client,
+            client=openai_client,
             collection_name=OLD_COLLECTION,
             embeddings=OpenAIEmbeddings()
         )
@@ -245,7 +245,7 @@ def search_all_collections(query, embeddings):
         st.write("Searching fine-tuned embeddings collection...")
         # Search new collection with fine-tuned embeddings
         new_store = Qdrant(
-            client=client,
+            client=qdrant_client,
             collection_name=COLLECTION_NAME,
             embeddings=embeddings
         )
@@ -274,7 +274,7 @@ if query:
                 
                 Question: {query}
                 """
-                response = client.chat.completions.create(
+                response = openai_client.chat.completions.create(
                     model=OPENAI_MODEL,
                     messages=[{"role": "user", "content": fallback_prompt}],
                     temperature=0.7,
@@ -306,7 +306,7 @@ if query:
                 Question: {query}
                 
                 Answer based ONLY on the protocol sections above:"""
-                response = client.chat.completions.create(
+                response = openai_client.chat.completions.create(
                     model=OPENAI_MODEL,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.7,
@@ -327,7 +327,7 @@ if query:
             
             Provide a helpful response about clinical protocols or HEAL Initiative topics:"""
             
-            response = client.chat.completions.create(
+            response = openai_client.chat.completions.create(
                 model=OPENAI_MODEL,
                 messages=[{"role": "user", "content": general_prompt}],
                 temperature=0.7,
@@ -342,16 +342,24 @@ if query:
 # In your completion function
 def get_completion(prompt, model=OPENAI_MODEL):
     try:
-        response = client.chat.completions.create(
-            model=model,  # Model is specified here instead
+        response = openai_client.chat.completions.create(
+            model=model,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-            max_tokens=None,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0
+            temperature=0.7
         )
         return response.choices[0].message.content
     except Exception as e:
         print(f"Error in completion: {str(e)}")
+        return None
+
+# For Qdrant operations, use qdrant_client
+def search_vectors(query_vector):
+    try:
+        return qdrant_client.search(
+            collection_name="fine_tuned_embeddings",
+            query_vector=query_vector,
+            limit=5
+        )
+    except Exception as e:
+        print(f"Error in vector search: {str(e)}")
         return None
