@@ -125,9 +125,9 @@ if uploaded_file:
             os.environ['TRANSFORMERS_CACHE'] = '/tmp/transformers_cache'
             os.environ['HF_HOME'] = '/tmp/huggingface'
 
-            # Update embeddings configuration to match Qdrant's expected dimensions
+            # Update embeddings to use a model that outputs 384 dimensions
             embeddings = HuggingFaceEmbeddings(
-                model_name="all-MiniLM-L6-v2",  # This model outputs 384-dimensional vectors
+                model_name="sentence-transformers/all-MiniLM-L6-v2",  # This model outputs 384d vectors
                 model_kwargs={'device': 'cpu'},
                 encode_kwargs={'normalize_embeddings': True}
             )
