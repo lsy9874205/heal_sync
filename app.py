@@ -117,7 +117,7 @@ if uploaded_file:
                 st.stop()
 
             # Chunk text
-            splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=300)
+            splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=200)
             chunks = splitter.split_text(text)
             st.write(f"Created {len(chunks)} chunks from the PDF")
 
