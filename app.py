@@ -11,6 +11,7 @@ from langchain.schema import HumanMessage
 from qdrant_client import QdrantClient, models
 import requests
 from openai import OpenAI
+from langchain_huggingface import HuggingFaceEmbeddings
 
 # Load environment variables
 load_dotenv()
@@ -126,8 +127,9 @@ if uploaded_file:
 
             # Initialize embeddings with explicit cache location
             embeddings = HuggingFaceEmbeddings(
-                model_name="lsy9874205/heal-protocol-embeddings",
-                cache_folder="/tmp/embeddings_cache"
+                model_name="sentence-transformers/all-mpnet-base-v2",
+                model_kwargs={'device': 'cpu'},
+                encode_kwargs={'normalize_embeddings': True}
             )
 
             # Embed and store in Qdrant with better error handling
@@ -203,8 +205,9 @@ client = OpenAI(
 
 # Initialize embeddings outside the file upload block
 embeddings = HuggingFaceEmbeddings(
-    model_name="lsy9874205/heal-protocol-embeddings",
-    cache_folder="/tmp/embeddings_cache"
+    model_name="sentence-transformers/all-mpnet-base-v2",
+    model_kwargs={'device': 'cpu'},
+    encode_kwargs={'normalize_embeddings': True}
 )
 
 # Question input
