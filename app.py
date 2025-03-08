@@ -260,14 +260,13 @@ def search_all_collections(query, embeddings, current_file_name):
 if query:
     with st.spinner("Searching for answers..."):
         if uploaded_file:
-            # Pass the current filename to the search function
             results = search_all_collections(query, embeddings, uploaded_file.name)
 
             # Ensure valid retrieved results
             cleaned_results = [res.page_content for res in results if hasattr(res, "page_content") and res.page_content]
 
             if not cleaned_results:
-                # Fallback to general LLM response
+                # This is your fallback to general LLM but it's using a protocol-specific prompt
                 fallback_prompt = f"""You are an AI assistant for the HEAL Research Dissemination Center.
                 The user has asked a question about a clinical research protocol, but I couldn't find relevant sections in the document.
                 
@@ -276,17 +275,23 @@ if query:
                 
                 Question: {query}
                 """
+                # Change this to be more general when protocol-specific content isn't found
+                fallback_prompt = f"""You are an AI assistant for the HEAL Research Dissemination Center.
+                Answer the following question generally, without assuming it's about a protocol:
+                
+                Question: {query}
+                
+                If the question is about HEAL Initiative topics, provide relevant information.
+                If it's a general question, provide a helpful response.
+                If it's completely off-topic, politely redirect the user to HEAL-related topics.
+                """
+                
                 response = openai_client.chat.completions.create(
                     model=OPENAI_MODEL,
                     messages=[{"role": "user", "content": fallback_prompt}],
-                    temperature=0.7,
-                    max_tokens=None,  # GPT-4 Turbo will automatically optimize
-                    top_p=1,
-                    frequency_penalty=0,
-                    presence_penalty=0
+                    temperature=0.7
                 )
-                st.write("### SYNC Response (General Knowledge):")
-                st.write("I couldn't find specific information about this in your protocol, but here's a general response:")
+                st.write("### SYNC Response:")
                 st.write(response.choices[0].message.content)
             else:
                 # Format retrieved text
