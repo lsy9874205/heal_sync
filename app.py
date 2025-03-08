@@ -10,6 +10,7 @@ from langchain_community.vectorstores import Qdrant
 from langchain.schema import HumanMessage
 from qdrant_client import QdrantClient, models
 import requests
+from langchain.chat_models import OpenAI
 
 # Load environment variables
 load_dotenv()
@@ -115,7 +116,7 @@ if uploaded_file:
                 st.stop()
 
             # Chunk text
-            splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=100)
+            splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=300)
             chunks = splitter.split_text(text)
             st.write(f"Created {len(chunks)} chunks from the PDF")
 
@@ -174,7 +175,32 @@ if uploaded_file:
                 os.remove(tmp_file_path)
 
 # Initialize LLM
-llm = ChatOpenAI(model="gpt-4-turbo", openai_api_key=openai_api_key)
+OPENAI_MODEL = "gpt-4-0125-preview"  # Latest GPT-4 Turbo with 128k context
+
+# If you want to provide model options:
+AVAILABLE_MODELS = {
+    "gpt-4-0125-preview": {
+        "name": "GPT-4 Turbo (Latest)",
+        "context_length": 128000,
+        "description": "Most capable and up-to-date model"
+    },
+    "gpt-4-1106-preview": {
+        "name": "GPT-4 Turbo",
+        "context_length": 128000,
+        "description": "Previous Turbo version"
+    },
+    "gpt-4": {
+        "name": "GPT-4",
+        "context_length": 8192,
+        "description": "Standard GPT-4"
+    }
+}
+
+# In your OpenAI client configuration
+client = OpenAI(
+    api_key=openai_api_key,
+    default_model=OPENAI_MODEL  # Set the default model
+)
 
 # Initialize embeddings outside the file upload block
 embeddings = HuggingFaceEmbeddings(
@@ -232,10 +258,18 @@ if query:
                 
                 Question: {query}
                 """
-                response = llm([HumanMessage(content=fallback_prompt)])
+                response = client.chat.completions.create(
+                    model=OPENAI_MODEL,
+                    messages=[{"role": "user", "content": fallback_prompt}],
+                    temperature=0.7,
+                    max_tokens=None,  # GPT-4 Turbo will automatically optimize
+                    top_p=1,
+                    frequency_penalty=0,
+                    presence_penalty=0
+                )
                 st.write("### SYNC Response (General Knowledge):")
                 st.write("I couldn't find specific information about this in your protocol, but here's a general response:")
-                st.write(response.content)
+                st.write(response.choices[0].message.content)
             else:
                 # Format retrieved text
                 context = "\n".join(cleaned_results)
@@ -256,11 +290,19 @@ if query:
                 Question: {query}
                 
                 Answer based ONLY on the protocol sections above:"""
-                response = llm([HumanMessage(content=prompt)])
+                response = client.chat.completions.create(
+                    model=OPENAI_MODEL,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.7,
+                    max_tokens=None,  # GPT-4 Turbo will automatically optimize
+                    top_p=1,
+                    frequency_penalty=0,
+                    presence_penalty=0
+                )
 
                 # Display response
                 st.write("### SYNC Response:")
-                st.write(response.content)
+                st.write(response.choices[0].message.content)
         else:  # No document uploaded, use general chat
             general_prompt = f"""You are an AI assistant for the HEAL Research Dissemination Center.
             You help users understand clinical research protocols and common data elements.
@@ -269,6 +311,14 @@ if query:
             
             Provide a helpful response about clinical protocols or HEAL Initiative topics:"""
             
-            response = llm([HumanMessage(content=general_prompt)])
+            response = client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[{"role": "user", "content": general_prompt}],
+                temperature=0.7,
+                max_tokens=None,  # GPT-4 Turbo will automatically optimize
+                top_p=1,
+                frequency_penalty=0,
+                presence_penalty=0
+            )
             st.write("### SYNC Response:")
-            st.write(response.content)
+            st.write(response.choices[0].message.content)

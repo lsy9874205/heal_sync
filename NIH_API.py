@@ -1,6 +1,7 @@
 import requests
 import json
 import re
+from datetime import datetime, timedelta
 
 VERSION_URL = "https://clinicaltrials.gov/api/v2/version"
 BASE_URL = "https://clinicaltrials.gov/api/v2/studies"
@@ -24,7 +25,7 @@ def extract_instrument_elements(text):
     
     return elements
 
-def fetch_study_data(search_terms, max_results=100):
+def fetch_study_data(search_terms, max_results=2):
     params = {
         "format": "json",
         "pageSize": max_results,
@@ -156,3 +157,94 @@ if study_data:
     filename = f"clinical_trials_results_{timestamp}.txt"
     export_to_file(study_data, filename)
     print(f"\nResults have been exported to: {filename}")
+
+def search_nih_projects(project_numbers=None, start_date=None, end_date=None):
+    """Search NIH Reporter API for projects"""
+    
+    url = "https://api.reporter.nih.gov/v2/projects/search"
+    
+    # If no dates provided, use last 5 years
+    if not start_date:
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=5*365)
+    
+    # Format dates for API
+    start_date_str = start_date.strftime("%Y-%m-%d")
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    
+    # Build criteria
+    criteria = {
+        "include_active_projects": True,
+        "include_terminated_projects": True,
+    }
+    
+    # Add specific project numbers if provided
+    if project_numbers:
+        criteria["project_nums"] = project_numbers
+    else:
+        criteria["fiscal_years"] = [year for year in range(start_date.year, end_date.year + 1)]
+    
+    payload = {
+        "criteria": criteria,
+        "include_fields": [
+            "ProjectTitle",
+            "ProjectNum",
+            "ContactPiName",
+            "OrgName",
+            "ProjectStartDate",
+            "ProjectEndDate",
+            "TotalCost",
+            "AbstractText",
+            "ProjectTerms",
+            "ApplId"
+        ],
+        "offset": 0,
+        "limit": 100
+    }
+    
+    headers = {
+        "accept": "application/json",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"Error: {response.status_code}")
+            print(f"Response: {response.text}")
+            return None
+    except Exception as e:
+        print(f"Error occurred: {str(e)}")
+        return None
+
+if __name__ == "__main__":
+    # Search for the specific HOPE study
+    project_numbers = ["1RM1DA055301-01"]
+    print(f"\nSearching for specific project: {project_numbers[0]}")
+    
+    results = search_nih_projects(project_numbers=project_numbers)
+    
+    if results and 'results' in results:
+        print(f"\nFound {len(results['results'])} matching projects")
+        
+        for project in results['results']:
+            print("\nProject Details:")
+            print(f"Title: {project.get('ProjectTitle')}")
+            print(f"PI: {project.get('ContactPiName')}")
+            print(f"Project Number: {project.get('ProjectNum')}")
+            print(f"Institution: {project.get('OrgName')}")
+            print(f"Start Date: {project.get('ProjectStartDate')}")
+            print(f"End Date: {project.get('ProjectEndDate')}")
+            print(f"Total Cost: ${project.get('TotalCost', 0):,.2f}")
+            print("\nAbstract:")
+            print(project.get('AbstractText', 'No abstract available'))
+            print("-" * 80)
+        
+        # Save the results
+        with open('hope_study_results.json', 'w') as f:
+            json.dump(results, f, indent=2)
+        print("\nFull results saved to hope_study_results.json")
+    else:
+        print("No results found")
