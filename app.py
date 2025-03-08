@@ -196,10 +196,9 @@ AVAILABLE_MODELS = {
     }
 }
 
-# In your OpenAI client configuration
+# OpenAI client configuration
 client = OpenAI(
-    api_key=openai_api_key,
-    default_model=OPENAI_MODEL  # Set the default model
+    api_key=openai_api_key
 )
 
 # Initialize embeddings outside the file upload block
@@ -322,3 +321,20 @@ if query:
             )
             st.write("### SYNC Response:")
             st.write(response.choices[0].message.content)
+
+# In your completion function
+def get_completion(prompt, model=OPENAI_MODEL):
+    try:
+        response = client.chat.completions.create(
+            model=model,  # Model is specified here instead
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=None,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"Error in completion: {str(e)}")
+        return None
