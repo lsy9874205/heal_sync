@@ -10,7 +10,7 @@ from langchain_community.vectorstores import Qdrant
 from langchain.schema import HumanMessage
 from qdrant_client import QdrantClient, models
 import requests
-from langchain.chat_models import OpenAI
+from openai import OpenAI
 
 # Load environment variables
 load_dotenv()
