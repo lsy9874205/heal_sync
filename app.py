@@ -228,29 +228,30 @@ except Exception:
 query = st.text_input("Ask a question about your document:")
 
 # When searching, try both collections
-def search_all_collections(query, embeddings):
+def search_all_collections(query, embeddings, current_file_name):
     results = []
     try:
-        st.write("Searching original embeddings collection...")
-        # Search old collection with OpenAI embeddings
-        old_store = Qdrant(
-            client=qdrant_client,
-            collection_name=OLD_COLLECTION,
-            embeddings=OpenAIEmbeddings()
-        )
-        old_results = old_store.similarity_search(query, k=6)
-        st.write(f"Found {len(old_results)} results in original embeddings")
-        results.extend(old_results)
-        
-        st.write("Searching fine-tuned embeddings collection...")
-        # Search new collection with fine-tuned embeddings
+        st.write("Searching document chunks...")
         new_store = Qdrant(
             client=qdrant_client,
             collection_name=COLLECTION_NAME,
             embeddings=embeddings
         )
-        new_results = new_store.similarity_search(query, k=6)
-        st.write(f"Found {len(new_results)} results in fine-tuned embeddings")
+        # Add filter to only search chunks from current document
+        search_filter = models.Filter(
+            must=[
+                models.FieldCondition(
+                    key="source",
+                    match=models.MatchValue(value=current_file_name)
+                )
+            ]
+        )
+        new_results = new_store.similarity_search(
+            query, 
+            k=6,
+            filter=search_filter  # Add the filter here
+        )
+        st.write(f"Found {len(new_results)} results in current document")
         results.extend(new_results)
     except Exception as e:
         st.error(f"Search error: {str(e)}")
@@ -258,8 +259,9 @@ def search_all_collections(query, embeddings):
 
 if query:
     with st.spinner("Searching for answers..."):
-        if uploaded_file:  # If a document is uploaded, use RAG
-            results = search_all_collections(query, embeddings)
+        if uploaded_file:
+            # Pass the current filename to the search function
+            results = search_all_collections(query, embeddings, uploaded_file.name)
 
             # Ensure valid retrieved results
             cleaned_results = [res.page_content for res in results if hasattr(res, "page_content") and res.page_content]
