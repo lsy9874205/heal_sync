@@ -125,9 +125,9 @@ if uploaded_file:
             os.environ['TRANSFORMERS_CACHE'] = '/tmp/transformers_cache'
             os.environ['HF_HOME'] = '/tmp/huggingface'
 
-            # Initialize embeddings with explicit cache location
+            # Update embeddings configuration to match Qdrant's expected dimensions
             embeddings = HuggingFaceEmbeddings(
-                model_name="sentence-transformers/all-mpnet-base-v2",
+                model_name="all-MiniLM-L6-v2",  # This model outputs 384-dimensional vectors
                 model_kwargs={'device': 'cpu'},
                 encode_kwargs={'normalize_embeddings': True}
             )
@@ -203,12 +203,26 @@ client = OpenAI(
     api_key=openai_api_key
 )
 
-# Initialize embeddings outside the file upload block
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-mpnet-base-v2",
-    model_kwargs={'device': 'cpu'},
-    encode_kwargs={'normalize_embeddings': True}
+# Update Qdrant client configuration
+qdrant_client = QdrantClient(
+    url=QDRANT_HOST,
+    api_key=QDRANT_API_KEY,
 )
+
+# Make sure collection settings match the embedding dimensions
+collection_config = {
+    "name": "fine_tuned_embeddings",
+    "vectors_config": {
+        "size": 384,  # Match the embedding dimension
+        "distance": "Cosine"
+    }
+}
+
+# Check if collection exists and recreate if necessary
+try:
+    qdrant_client.get_collection("fine_tuned_embeddings")
+except Exception:
+    qdrant_client.recreate_collection(**collection_config)
 
 # Question input
 query = st.text_input("Ask a question about your document:")
