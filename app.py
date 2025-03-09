@@ -19,7 +19,6 @@ openai_api_key = (os.getenv("OPENAI_API_KEY") or os.getenv("openai_api_key", "")
 QDRANT_HOST = (os.getenv("QDRANT_HOST") or os.getenv("qdrant_host", "")).strip()
 QDRANT_API_KEY = (os.getenv("QDRANT_API_KEY") or os.getenv("qdrant_api_key", "")).strip()
 
-# Ensure required environment variables are set
 if not openai_api_key or not QDRANT_HOST or not QDRANT_API_KEY:
     st.error("Missing environment variables. Check your API keys.")
     st.stop()
@@ -327,14 +326,23 @@ if query:
                     
                     Question: {query}
                     
-                    When analyzing data collection, look for these HEAL Common Data Elements (CDEs) and their variations:
-                    {', '.join([f"{domain} ({', '.join(info['aliases'][:2])})" for domain, info in HEAL_CDE_MAPPING.items()])}
+                    When analyzing data collection, pay special attention to:
+                    1. Tables or structured lists showing assessments
+                    2. Sections titled "Study Procedures" or "Data Collection"
+                    3. These core domains and their assessment tools:
+                       - Pain (e.g., NRS-11, PedsQL)
+                       - Physical Function (e.g., PROMIS measures)
+                       - Sleep (e.g., PROMIS Sleep Disturbance)
+                       - Emotional/Mental Health (e.g., GAD-2, PHQ-2)
+                       - Treatment Outcomes (e.g., PGIC)
+                       - Demographics
                     
-                    Common assessment tools include:
-                    {', '.join([tool for info in HEAL_CDE_MAPPING.values() for tool in info['tools'] if tool])}
+                    When you find assessment tools or measures:
+                    - List them with their associated domains
+                    - Include their measurement timepoints
+                    - Note any definitions or specific uses
                     
-                    Map any findings to the standard HEAL CDE names where possible, and note when variations or alternative names are used.
-                    Answer based ONLY on the protocol sections above."""
+                    Answer based ONLY on the protocol sections above, being sure to capture any structured assessment schedules or data collection tables."""
 
                     response = openai_client.chat.completions.create(
                         model=OPENAI_MODEL,
