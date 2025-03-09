@@ -228,6 +228,55 @@ except Exception:
 query = st.text_input("Ask a question about your uploaded protocol:", 
     placeholder="Example: What are the inclusion criteria? What data elements are being collected?")
 
+# Define HEAL CDE domains with variations and aliases
+HEAL_CDE_MAPPING = {
+    "Demographics": {
+        "standard_name": "Demographics",
+        "aliases": ["HEAL required demographics", "demographic variables", "patient demographics"],
+        "tools": []
+    },
+    "Pain Intensity": {
+        "standard_name": "Pain Intensity",
+        "aliases": ["BPI Intensity", "pain severity", "magnitude of pain"],
+        "tools": ["BPI", "NRS-11"]
+    },
+    "Pain Interference": {
+        "standard_name": "Pain Interference",
+        "aliases": ["BPI Interference", "effect of pain on daily activities"],
+        "tools": ["BPI", "PedsQL"]
+    },
+    "Physical Function": {
+        "standard_name": "Physical Function",
+        "aliases": ["Physical Functioning", "Quality of Life", "PedsQL", "physical activity"],
+        "tools": ["PedsQL", "PROMIS Physical Function"]
+    },
+    "Sleep": {
+        "standard_name": "Sleep",
+        "aliases": ["AWS+Duration", "sleep quality", "sleep disturbance"],
+        "tools": ["AWS", "PROMIS Sleep Disturbance"]
+    },
+    "Pain Catastrophizing": {
+        "standard_name": "Pain Catastrophizing",
+        "aliases": ["PCS-C", "PCS-P", "pain catastrophizing scale"],
+        "tools": ["PCS-C", "PCS-P"]
+    },
+    "Depression": {
+        "standard_name": "Depression",
+        "aliases": ["PHQ-8", "PHQ-9", "depressive symptoms"],
+        "tools": ["PHQ (Child)", "PHQ (Parent)"]
+    },
+    "Anxiety": {
+        "standard_name": "Anxiety",
+        "aliases": ["GAD-2", "GAD-7", "anxiety symptoms"],
+        "tools": ["GAD (Child)", "GAD (Parent)"]
+    },
+    "Treatment Satisfaction": {
+        "standard_name": "Global Satisfaction with Treatment",
+        "aliases": ["PGIC", "treatment efficacy", "patient global impression of change"],
+        "tools": ["PGIC"]
+    }
+}
+
 # When searching, try both collections
 def search_all_collections(query, embeddings, current_file_name):
     results = []
@@ -278,23 +327,14 @@ if query:
                     
                     Question: {query}
                     
-                    When looking for data elements, consider all of these terms and concepts:
-                    - Data elements or variables
-                    - Assessment tools and instruments
-                    - Questionnaires, surveys, or scales
-                    - Measurement instruments or tools
-                    - Clinical assessments or evaluations
-                    - Patient-reported outcomes (PROs)
-                    - Standardized measures
-                    - Diagnostic tests or procedures
-                    - Biomarkers or laboratory measures
-                    - HEAL common data elements
-                    - Core Measures
-                    - Supplemental Measures
-                    - Primary Measures
-                    - Secondary Measures
+                    When analyzing data collection, look for these HEAL Common Data Elements (CDEs) and their variations:
+                    {', '.join([f"{domain} ({', '.join(info['aliases'][:2])})" for domain, info in HEAL_CDE_MAPPING.items()])}
                     
-                    Answer based ONLY on the protocol sections above, and explicitly state if specific information about any of these types of data collection is not found."""
+                    Common assessment tools include:
+                    {', '.join([tool for info in HEAL_CDE_MAPPING.values() for tool in info['tools'] if tool])}
+                    
+                    Map any findings to the standard HEAL CDE names where possible, and note when variations or alternative names are used.
+                    Answer based ONLY on the protocol sections above."""
 
                     response = openai_client.chat.completions.create(
                         model=OPENAI_MODEL,
