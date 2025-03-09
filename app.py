@@ -270,14 +270,14 @@ if query:
                     # Format retrieved text
                     context = "\n".join(cleaned_results)
                     
-                    prompt = f"""You are an AI assistant analyzing clinical research protocols for the HEAL Research Dissemination Center.
+                    prompt = f"""You are an AI assistant analyzing clinical research protocols to extract information about the protocol including data elements, assessment tools, instruments, inclusion and exclusion criteria.
                     
                     Current protocol sections:
                     {context}
                     
                     Question: {query}
                     
-                    Answer based ONLY on the protocol sections above."""
+                    Answer based on the protocol sections above, the refer to the model where appropriate."""
 
                     response = openai_client.chat.completions.create(
                         model=OPENAI_MODEL,
