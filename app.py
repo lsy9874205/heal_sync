@@ -1,4 +1,5 @@
 import os
+import json
 import streamlit as st
 import pdfplumber
 from dotenv import load_dotenv
@@ -46,10 +47,11 @@ def extract_text_and_tables(pdf_path):
             text = page.extract_text()
             if text:
                 extracted_text += text + "\n"
+            
             tables = page.extract_tables()
             for table in tables:
-                structured_text = "\n".join([" | ".join(row) for row in table])
-                extracted_tables.append(structured_text)
+                json_table = json.dumps(table)  # Store as JSON for structured retrieval
+                extracted_tables.append(json_table)
     return extracted_text, extracted_tables
 
 if uploaded_file:
@@ -72,7 +74,11 @@ if uploaded_file:
         points = []
         for i, chunk in enumerate(chunks):
             vector = embeddings.embed_query(chunk)
-            points.append(models.PointStruct(id=i, vector=vector, payload={"content": chunk, "source": uploaded_file.name}))
+            points.append(models.PointStruct(id=i, vector=vector, payload={"content": chunk, "type": "text", "source": uploaded_file.name}))
+        
+        for i, table_json in enumerate(tables):
+            vector = embeddings.embed_query(table_json)
+            points.append(models.PointStruct(id=len(chunks) + i, vector=vector, payload={"content": table_json, "type": "table", "source": uploaded_file.name}))
         
         if points:
             client.upsert(collection_name=COLLECTION_NAME, points=points)
@@ -82,9 +88,18 @@ query = st.text_input("Ask a question about your uploaded protocol:", placeholde
 
 def search_protocol(query, file_name):
     store = Qdrant(client=client, collection_name=COLLECTION_NAME, embeddings=embeddings)
-    search_filter = models.Filter(must=[models.FieldCondition(key="source", match=models.MatchValue(value=file_name))])
-    results = store.similarity_search(query, k=6, filter=search_filter)
-    return [res.page_content for res in results if hasattr(res, "page_content")]
+    
+    text_results = store.similarity_search(query, k=6, filter=models.Filter(
+        must=[models.FieldCondition(key="source", match=models.MatchValue(value=file_name)),
+              models.FieldCondition(key="type", match=models.MatchValue(value="text"))]
+    ))
+    
+    table_results = store.similarity_search(query, k=6, filter=models.Filter(
+        must=[models.FieldCondition(key="source", match=models.MatchValue(value=file_name)),
+              models.FieldCondition(key="type", match=models.MatchValue(value="table"))]
+    ))
+    
+    return [res.page_content for res in text_results] + [res.page_content for res in table_results]
 
 if query and uploaded_file:
     with st.spinner("Searching..."):
@@ -92,15 +107,18 @@ if query and uploaded_file:
         if results:
             context = "\n".join(results)
             prompt = f"""
-            You are analyzing a clinical protocol.
+            Extract all data elements collected in this study. Use the following structure:
+            
+            - **Domain**: (e.g., Pain Intensity, Sleep)
+            - **Assessment Tool**: (e.g., NRS-11, PROMIS)
+            - **Timepoints**: (e.g., Baseline, Week 6, Follow-up)
+            - **Definition**: (e.g., Measure of sleep disturbance)
+            
+            Do NOT say \"no data elements found\" if a table exists. Instead, parse and format the table.
+            
             Document excerpts:
             {context}
             Question: {query}
-            Extract and structure the response focusing on:
-            - Domain (e.g., Pain Intensity, Sleep)
-            - Assessment Tool (e.g., NRS-11, PROMIS)
-            - Timepoints
-            - Definitions
             """
             
             openai_client = ChatOpenAI(api_key=openai_api_key, model="gpt-4")
