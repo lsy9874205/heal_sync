@@ -278,6 +278,10 @@ if query:
                     
                     Question: {query}
                     
+                    When analyzing data collection, consider both:
+                    - Standard data elements (demographics, outcomes, etc.)
+                    - Assessment tools and measurement instruments (questionnaires, scales, tests)
+                    
                     Answer based ONLY on the protocol sections above."""
 
                     response = openai_client.chat.completions.create(
@@ -296,8 +300,8 @@ if query:
             except Exception as e:
                 st.error(f"Error processing request: {str(e)}")
         else:  # No document uploaded, use general chat
-            general_prompt = f"""You are an AI assistant for the HEAL Research Dissemination Center.
-            You help users understand clinical research protocols and common data elements.
+            general_prompt = f"""You are an AI assistant for clinical researchers.
+            You help users understand clinical research protocols, common data elements, assessment tools, and instruments.
             
             Question: {query}
             
