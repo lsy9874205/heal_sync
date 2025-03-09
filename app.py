@@ -99,7 +99,11 @@ def search_protocol(query, file_name):
               models.FieldCondition(key="type", match=models.MatchValue(value="table"))]
     ))
     
-    return [res.page_content for res in text_results] + [res.page_content for res in table_results]
+    # Ensure only valid results with content are returned
+    valid_results = [res.page_content for res in text_results if hasattr(res, "page_content") and res.page_content] + \
+                    [res.page_content for res in table_results if hasattr(res, "page_content") and res.page_content]
+    
+    return valid_results
 
 if query and uploaded_file:
     with st.spinner("Searching..."):
