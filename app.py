@@ -326,23 +326,20 @@ if query:
                     
                     Question: {query}
                     
-                    When analyzing data collection, pay special attention to:
-                    1. Tables or structured lists showing assessments
-                    2. Sections titled "Study Procedures" or "Data Collection"
-                    3. These core domains and their assessment tools:
-                       - Pain (e.g., NRS-11, PedsQL)
-                       - Physical Function (e.g., PROMIS measures)
-                       - Sleep (e.g., PROMIS Sleep Disturbance)
-                       - Emotional/Mental Health (e.g., GAD-2, PHQ-2)
-                       - Treatment Outcomes (e.g., PGIC)
-                       - Demographics
+                    IMPORTANT INSTRUCTION:
+                    When you see a table or structured list with columns like "Domain", "Definition", "Assessment Tool", and "Timepoints", 
+                    these ARE the explicit data elements being collected. Do not say they are not mentioned.
                     
-                    When you find assessment tools or measures:
-                    - List them with their associated domains
-                    - Include their measurement timepoints
-                    - Note any definitions or specific uses
+                    For each data element found in tables or structured lists:
+                    1. Domain (e.g., Pain Intensity, Sleep)
+                    2. The specific assessment tool used (e.g., NRS-11, PROMIS)
+                    3. When it's being measured (timepoints)
+                    4. What it measures (definition)
                     
-                    Answer based ONLY on the protocol sections above, being sure to capture any structured assessment schedules or data collection tables."""
+                    Also note any additional data elements mentioned outside of tables (e.g., demographics).
+                    
+                    Provide a clear, structured response listing all data elements and assessments found in the protocol.
+                    Answer based ONLY on the protocol sections above."""
 
                     response = openai_client.chat.completions.create(
                         model=OPENAI_MODEL,
