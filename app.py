@@ -259,40 +259,41 @@ def search_all_collections(query, embeddings, current_file_name):
 
 if query:
     with st.spinner("Searching for answers..."):
-        if uploaded_file:  # If a document is uploaded
-            results = search_all_collections(query, embeddings, uploaded_file.name)
+        if uploaded_file:
+            try:
+                # Search document chunks
+                st.write("Searching document chunks...")
+                results = search_all_collections(query, embeddings, uploaded_file.name)
+                cleaned_results = [res.page_content for res in results if hasattr(res, "page_content") and res.page_content]
 
-            # Ensure valid retrieved results
-            cleaned_results = [res.page_content for res in results if hasattr(res, "page_content") and res.page_content]
+                if cleaned_results:
+                    # Format retrieved text
+                    context = "\n".join(cleaned_results)
+                    
+                    prompt = f"""You are an AI assistant analyzing clinical research protocols for the HEAL Research Dissemination Center.
+                    
+                    Current protocol sections:
+                    {context}
+                    
+                    Question: {query}
+                    
+                    Answer based ONLY on the protocol sections above."""
 
-            if not cleaned_results:
-                # This is your fallback to general LLM but it's using a protocol-specific prompt
-                fallback_prompt = f"""You are an AI assistant for the HEAL Research Dissemination Center.
-                The user has asked a question about a clinical research protocol, but I couldn't find relevant sections in the document.
-                
-                Please provide a general response about how this topic typically appears in clinical protocols.
-                If the question is completely unrelated to clinical protocols, politely redirect the user.
-                
-                Question: {query}
-                """
-                # Change this to be more general when protocol-specific content isn't found
-                fallback_prompt = f"""You are an AI assistant for the HEAL Research Dissemination Center.
-                Answer the following question generally, without assuming it's about a protocol:
-                
-                Question: {query}
-                
-                If the question is about HEAL Initiative topics, provide relevant information.
-                If it's a general question, provide a helpful response.
-                If it's completely off-topic, politely redirect the user to HEAL-related topics.
-                """
-                
-                response = openai_client.chat.completions.create(
-                    model=OPENAI_MODEL,
-                    messages=[{"role": "user", "content": fallback_prompt}],
-                    temperature=0.7
-                )
-                st.write("### SYNC Response:")
-                st.write(response.choices[0].message.content)
+                    response = openai_client.chat.completions.create(
+                        model=OPENAI_MODEL,
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.7
+                    )
+                    
+                    st.write("### SYNC Response:")
+                    if response and response.choices:
+                        st.write(response.choices[0].message.content)
+                    else:
+                        st.error("No response generated from the model")
+                else:
+                    st.warning("No relevant content found in the document")
+            except Exception as e:
+                st.error(f"Error processing request: {str(e)}")
         else:  # No document uploaded, use general chat
             general_prompt = f"""You are an AI assistant for the HEAL Research Dissemination Center.
             You help users understand clinical research protocols and common data elements.
