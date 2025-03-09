@@ -278,11 +278,23 @@ if query:
                     
                     Question: {query}
                     
-                    When analyzing data collection, consider both:
-                    - Standard data elements (demographics, outcomes, etc.)
-                    - Assessment tools and measurement instruments (questionnaires, scales, tests)
+                    When looking for data elements, consider all of these terms and concepts:
+                    - Data elements or variables
+                    - Assessment tools and instruments
+                    - Questionnaires, surveys, or scales
+                    - Measurement instruments or tools
+                    - Clinical assessments or evaluations
+                    - Patient-reported outcomes (PROs)
+                    - Standardized measures
+                    - Diagnostic tests or procedures
+                    - Biomarkers or laboratory measures
+                    - HEAL common data elements
+                    - Core Measures
+                    - Supplemental Measures
+                    - Primary Measures
+                    - Secondary Measures
                     
-                    Answer based ONLY on the protocol sections above."""
+                    Answer based ONLY on the protocol sections above, and explicitly state if specific information about any of these types of data collection is not found."""
 
                     response = openai_client.chat.completions.create(
                         model=OPENAI_MODEL,
