@@ -119,7 +119,7 @@ if uploaded_file:
             # Chunk text
             splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=200)
             chunks = splitter.split_text(text)
-            st.write(f"Created {len(chunks)} chunks from the PDF")
+            st.write(f"📄 Analyzing {len(chunks)} sections of your document...")
 
             # Set cache directory to a writable location
             os.environ['TRANSFORMERS_CACHE'] = '/tmp/transformers_cache'
@@ -155,8 +155,8 @@ if uploaded_file:
 
                 if points:
                     client.upsert(collection_name=COLLECTION_NAME, points=points)
-                    st.write(f"Stored {len(points)} chunks in Qdrant")
-                    st.success("PDF processed successfully")
+                    st.write(f"🔍 Indexing {len(points)} document sections for quick search...")
+                    st.success("✨ Your document is ready for questions!")
                 else:
                     st.error("No valid embeddings were created")
 
@@ -225,7 +225,8 @@ except Exception:
     qdrant_client.recreate_collection(**collection_config)
 
 # Question input
-query = st.text_input("Ask a question about your document:")
+query = st.text_input("Ask a question about your uploaded protocol:", 
+    placeholder="Example: What are the inclusion criteria? What data elements are being collected?")
 
 # When searching, try both collections
 def search_all_collections(query, embeddings, current_file_name):
