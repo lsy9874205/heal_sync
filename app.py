@@ -119,7 +119,7 @@ if uploaded_file:
             # Chunk text
             splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=200)
             chunks = splitter.split_text(text)
-            st.write(f"📄 Analyzing {len(chunks)} sections of your document...")
+            st.write(f"📄 Analyzing {len(chunks)} sections (chunks) of your document...")
 
             # Set cache directory to a writable location
             os.environ['TRANSFORMERS_CACHE'] = '/tmp/transformers_cache'
@@ -271,14 +271,14 @@ if query:
                     # Format retrieved text
                     context = "\n".join(cleaned_results)
                     
-                    prompt = f"""You are an AI assistant analyzing clinical research protocols to extract information about the protocol including data elements, assessment tools, instruments, inclusion and exclusion criteria.
+                    prompt = f"""You are an AI assistant analyzing clinical research protocols for the HEAL Research Dissemination Center.
                     
                     Current protocol sections:
                     {context}
                     
                     Question: {query}
                     
-                    Answer based on the protocol sections above, the refer to the model where appropriate."""
+                    Answer based ONLY on the protocol sections above."""
 
                     response = openai_client.chat.completions.create(
                         model=OPENAI_MODEL,
@@ -286,7 +286,7 @@ if query:
                         temperature=0.7
                     )
                     
-                    st.write("### Results:")
+                    st.write("### SYNC Response:")
                     if response and response.choices:
                         st.write(response.choices[0].message.content)
                     else:
