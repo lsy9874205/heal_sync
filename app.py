@@ -227,12 +227,17 @@ except Exception:
 query = st.text_input("Ask a question about your uploaded protocol:", 
     placeholder="Example: What are the inclusion criteria? What data elements are being collected?")
 
-# Define HEAL CDE domains with variations and aliases
+# Keep the HEAL CDE mapping for reference
 HEAL_CDE_MAPPING = {
     "Demographics": {
         "standard_name": "Demographics",
-        "aliases": ["HEAL required demographics", "demographic variables", "patient demographics"],
+        "aliases": ["HEAL required demographics", "demographic variables"],
         "tools": []
+    },
+    "Pain": {
+        "standard_name": "Pain Domain",
+        "aliases": ["pain intensity", "pain interference", "pain catastrophizing"],
+        "tools": ["BPI", "NRS-11", "PedsQL", "PCS"]
     },
     "Pain Intensity": {
         "standard_name": "Pain Intensity",
@@ -358,18 +363,18 @@ if query:
                     prompt = f"""You are an AI assistant analyzing clinical research protocols for the HEAL Research Dissemination Center.
                     You have access to sections of a research protocol document.
                     
-                    When answering questions:
-                    1. Focus on the specific details found in the protocol
-                    2. Reference relevant sections (like Methods, Eligibility, etc.)
-                    3. Be precise about what the protocol states
-                    4. If information isn't in the provided sections, say "That information isn't in the sections I can access"
+                    When analyzing data collection and assessments:
+                    1. First identify any HEAL Common Data Elements (CDEs) and their assessment tools
+                    2. Then identify ANY additional data elements, measures, or assessments being collected
+                    3. Include timepoints and definitions when available
+                    4. Be specific about what's found in the protocol
                     
                     Current protocol sections:
                     {context}
                     
                     Question: {query}
                     
-                    Answer based ONLY on the protocol sections above:"""
+                    Answer based ONLY on the protocol sections above, listing both HEAL-specific and other data elements found."""
 
                     response = openai_client.chat.completions.create(
                         model=OPENAI_MODEL,
