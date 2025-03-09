@@ -329,7 +329,7 @@ if query:
                     
                     When answering questions:
                     1. Focus on the specific details found in the protocol
-                    2. Reference relevant sections (like Methods, Eligibility, etc.)
+                    2. Reference relevant sections (like Assessment Tools, Data Elements, Data Collection Methods, Eligibility, etc.)
                     3. Be precise about what the protocol states
                     4. If information isn't in the provided sections, say "That information isn't in the sections I can access"
                     
