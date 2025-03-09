@@ -285,7 +285,7 @@ if query:
                         temperature=0.7
                     )
                     
-                    st.write("### SYNC Response:")
+                    st.write("### Results:")
                     if response and response.choices:
                         st.write(response.choices[0].message.content)
                     else:
@@ -311,7 +311,7 @@ if query:
                 frequency_penalty=0,
                 presence_penalty=0
             )
-            st.write("### SYNC Response:")
+            st.write("### Results:")
             st.write(response.choices[0].message.content)
 
 # In your completion function
@@ -338,3 +338,15 @@ def search_vectors(query_vector):
     except Exception as e:
         print(f"Error in vector search: {str(e)}")
         return None
+
+# Add this CSS to change the processing color from red to blue
+st.markdown("""
+    <style>
+    .stTextInput > div[data-baseweb="input"] > div:first-child {
+        transition: border-color 0.3s;
+    }
+    .stTextInput > div[data-baseweb="input"] > div:first-child[data-loading="true"] {
+        border-color: #0066FF !important;  /* Change to blue */
+    }
+    </style>
+""", unsafe_allow_html=True)
