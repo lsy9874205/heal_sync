@@ -306,12 +306,48 @@ def search_all_collections(query, embeddings, current_file_name):
         st.error(f"Search error: {str(e)}")
     return results
 
+# Add the blue styling CSS
+st.markdown("""
+    <style>
+    .stTextInput > div[data-baseweb="input"] > div:first-child {
+        transition: border-color 0.3s;
+    }
+    .stTextInput > div[data-baseweb="input"] > div:first-child[data-loading="true"] {
+        border-color: #0066FF !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# Main query handling
 if query:
     with st.spinner("Searching for answers..."):
         if uploaded_file:
-            try:
+            # Check if query appears to be about general HEAL knowledge
+            general_heal_keywords = ["HEAL domains", "HEAL Initiative", "CDE", "common data elements"]
+            is_general_heal_query = any(keyword.lower() in query.lower() for keyword in general_heal_keywords)
+
+            if is_general_heal_query:
+                # Use general HEAL knowledge base directly
+                general_prompt = f"""You are an AI assistant for the HEAL Research Dissemination Center.
+                Please provide information about the HEAL Initiative, focusing on:
+                - Common Data Elements (CDEs)
+                - HEAL Domains
+                - HEAL Initiative structure and goals
+                - Data standards and harmonization
+                - Clinical Research Standards
+                - HEAL Supplemental Guidance
+                
+                Question: {query}
+                """
+                response = openai_client.chat.completions.create(
+                    model=OPENAI_MODEL,
+                    messages=[{"role": "user", "content": general_prompt}],
+                    temperature=0.7
+                )
+                st.write("### Results (HEAL Knowledge Base):")
+                st.write(response.choices[0].message.content)
+            else:
                 # Search document chunks
-                st.write("Searching document chunks...")
                 results = search_all_collections(query, embeddings, uploaded_file.name)
                 cleaned_results = [res.page_content for res in results if hasattr(res, "page_content") and res.page_content]
 
@@ -320,26 +356,20 @@ if query:
                     context = "\n".join(cleaned_results)
                     
                     prompt = f"""You are an AI assistant analyzing clinical research protocols for the HEAL Research Dissemination Center.
+                    You have access to sections of a research protocol document.
+                    
+                    When answering questions:
+                    1. Focus on the specific details found in the protocol
+                    2. Reference relevant sections (like Methods, Eligibility, etc.)
+                    3. Be precise about what the protocol states
+                    4. If information isn't in the provided sections, say "That information isn't in the sections I can access"
                     
                     Current protocol sections:
                     {context}
                     
                     Question: {query}
                     
-                    IMPORTANT INSTRUCTION:
-                    When you see a table or structured list with columns like "Domain", "Definition", "Assessment Tool", and "Timepoints", 
-                    these ARE the explicit data elements being collected. Do not say they are not mentioned.
-                    
-                    For each data element found in tables or structured lists:
-                    1. Domain (e.g., Pain Intensity, Sleep)
-                    2. The specific assessment tool used (e.g., NRS-11, PROMIS)
-                    3. When it's being measured (timepoints)
-                    4. What it measures (definition)
-                    
-                    Also note any additional data elements mentioned outside of tables (e.g., demographics).
-                    
-                    Provide a clear, structured response listing all data elements and assessments found in the protocol.
-                    Answer based ONLY on the protocol sections above."""
+                    Answer based ONLY on the protocol sections above:"""
 
                     response = openai_client.chat.completions.create(
                         model=OPENAI_MODEL,
@@ -347,34 +377,27 @@ if query:
                         temperature=0.7
                     )
                     
-                    st.write("### SYNC Response:")
-                    if response and response.choices:
-                        st.write(response.choices[0].message.content)
-                    else:
-                        st.error("No response generated from the model")
+                    st.write("### Results:")
+                    st.write(response.choices[0].message.content)
                 else:
-                    st.warning("No relevant content found in the document")
-            except Exception as e:
-                st.error(f"Error processing request: {str(e)}")
-        else:  # No document uploaded, use general chat
-            general_prompt = f"""You are an AI assistant for clinical researchers.
-            You help users understand clinical research protocols, common data elements, assessment tools, and instruments.
-            
-            Question: {query}
-            
-            Provide a helpful response about clinical protocols or HEAL Initiative topics:"""
-            
-            response = openai_client.chat.completions.create(
-                model=OPENAI_MODEL,
-                messages=[{"role": "user", "content": general_prompt}],
-                temperature=0.7,
-                max_tokens=None,  # GPT-4 Turbo will automatically optimize
-                top_p=1,
-                frequency_penalty=0,
-                presence_penalty=0
-            )
-            st.write("### Results:")
-            st.write(response.choices[0].message.content)
+                    # Fallback for no results
+                    fallback_prompt = f"""You are an AI assistant for the HEAL Research Dissemination Center.
+                    Answer the following question generally, without assuming it's about a protocol:
+                    
+                    Question: {query}
+                    
+                    If the question is about HEAL Initiative topics, provide relevant information.
+                    If it's a general question, provide a helpful response.
+                    If it's completely off-topic, politely redirect the user to HEAL-related topics.
+                    """
+                    
+                    response = openai_client.chat.completions.create(
+                        model=OPENAI_MODEL,
+                        messages=[{"role": "user", "content": fallback_prompt}],
+                        temperature=0.7
+                    )
+                    st.write("### Results:")
+                    st.write(response.choices[0].message.content)
 
 # In your completion function
 def get_completion(prompt, model=OPENAI_MODEL):
@@ -400,15 +423,3 @@ def search_vectors(query_vector):
     except Exception as e:
         print(f"Error in vector search: {str(e)}")
         return None
-
-# Add this CSS to change the processing color from red to blue
-st.markdown("""
-    <style>
-    .stTextInput > div[data-baseweb="input"] > div:first-child {
-        transition: border-color 0.3s;
-    }
-    .stTextInput > div[data-baseweb="input"] > div:first-child[data-loading="true"] {
-        border-color: #0066FF !important;  /* Change to blue */
-    }
-    </style>
-""", unsafe_allow_html=True)
